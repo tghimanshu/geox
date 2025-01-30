@@ -1,0 +1,7 @@
+gspread
+pandas
+scikit-learn
+statsmodels
+flask
+flask_ngrok
+google-auth
