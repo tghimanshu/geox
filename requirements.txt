@@ -5,3 +5,4 @@ statsmodels
 flask
 flask_ngrok
 google-auth
+gunicorn
