@@ -1,6 +1,16 @@
+"""
+Main application module for Time Series Analysis using Flask.
+
+This module initializes a Flask application that provides endpoints to fetch data
+from a Google Spreadsheet, perform time series analysis using ARIMA and ARIMAX models,
+and return the Mean Absolute Percentage Error (MAPE) for each model.
+
+The application relies on Google Cloud Platform credentials to access the spreadsheet.
+"""
+
 import pandas as pd
 # from google.colab import auth
-import  google.auth
+import google.auth
 import gspread
 import os
 import json
@@ -22,6 +32,19 @@ scopes = [
 credentials = json.loads(base64.b64decode(os.environ.get("GCP_CREDS")).decode("utf-8"))
 
 def create_data_frame():
+    """
+    Fetches data from a Google Spreadsheet and creates pandas DataFrames.
+
+    This function authenticates with Google Sheets using service account credentials,
+    opens a specific spreadsheet (ID hardcoded), and iterates through its worksheets.
+    It creates a pandas DataFrame for each relevant worksheet (excluding "Data" and
+    "CorrelationResults"). The DataFrames are stored in the global scope using the
+    worksheet title as the variable name. It also attempts to convert numeric columns
+    to float.
+
+    Returns:
+        list: A list of strings containing the names of the sheets that were processed.
+    """
     gc = gspread.service_account_from_dict(credentials, scopes=scopes)
 
     spreadsheet_key = '1jnTFKyRtwLc1cK1YXQ3GER_z8dYmpsj0VmB9nih-szQ'
@@ -58,6 +81,22 @@ def create_data_frame():
 
 
 def generate_results(relevant_sheet_names):
+    """
+    Generates time series analysis results for the given sheets.
+
+    This function iterates through the list of sheet names, retrieves the corresponding
+    DataFrames from the global scope, and performs ARIMA and ARIMAX modeling.
+    It splits the data into training (all but last 30 rows) and testing (last 30 rows) sets.
+    It calculates the Mean Absolute Percentage Error (MAPE) for both models.
+
+    Args:
+        relevant_sheet_names (list): A list of strings representing the names of the sheets to analyze.
+
+    Returns:
+        dict: A dictionary where keys are sheet names and values are dictionaries containing
+              'ARIMA' and/or 'ARIMAX' MAPE scores.
+              Example: {'Sheet1': {'ARIMA': 0.05, 'ARIMAX': 0.04}}
+    """
     results = {}
     for sheet_name in relevant_sheet_names:
         try:
@@ -107,13 +146,30 @@ app = Flask(__name__)
 
 @app.route("/")
 def home():
+  """
+  Health check endpoint.
+
+  Returns:
+      dict: A dictionary containing the status of the application.
+            Example: {"status": "Ok!"}
+  """
   return {"status": "Ok!"}
 
 
 @app.route("/get_map_value")
 def get_map_value():
+    """
+    Endpoint to trigger data fetching and analysis.
+
+    This endpoint calls `create_data_frame` to fetch data and `generate_results`
+    to perform the analysis. It returns the calculated MAPE scores for each sheet.
+
+    Returns:
+        dict: A dictionary containing the analysis results (MAPE scores).
+    """
     relevant_sheet_names = create_data_frame()
     results = generate_results(relevant_sheet_names)
     return results
 
-app.run()
+if __name__ == "__main__":
+    app.run()
